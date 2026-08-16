@@ -17,11 +17,11 @@
 - **学习模式：项目先行**（2026-08-10 定）——跳过顺序学基础，直接做里程碑项目，Python 基础穿插补；用户能读懂 Python 但不擅长写，讲解代码要逐行注释 + C++ 视角对照。
 - 学习成果/进度文档统一放在本工作区根目录（学习计划.md、学习进度.md、各阶段课程讲义），便于多电脑同步继续。
 - 微调需 GPU：优先 Colab/Kaggle 免费 T4；无 GPU 可用小模型 CPU 慢跑。
-- 当前进度：**里程碑 1 完成 ✅（2026-08-11）**；Prompt ✅、Skill 微课 ✅（study-checkin 已装项目级）；当前：模块 2 · 第 9 周（MySQL 已安装，建表/增删改查/PyMySQL 待学）；讲义在 阶段1-Python基础/。
+- 当前进度：**里程碑 1 完成 ✅（2026-08-11）**；Prompt ✅、Skill 微课 ✅；模块 2 · 第 9 周进行中——第 9 课 MySQL 基础完成 ✅（2026-08-14），第 10 课 PyMySQL 完成 ✅（2026-08-15），第 11 课 Numpy/Pandas 进行中（收官课）；讲义在 阶段1-Python基础/。
 - **本地模型：qwen3.5:4b**（用户自选并已安装，曾用 deepseek-r1:1.5b；Qwen 若开思考模式也可能输出思考过程）。
 - **实现偏好：接口调用倾向用官方 ollama SDK**（client.chat），而非裸 requests（用户 2026-08-11 采用）。
 
 ## 工作区与记忆机制
-- 工作区路径随电脑不同：另一台电脑为 F:\WorkBuddy\AI大模型学习；本机（2026-08-13 起）为 C:\Users\YueLi\Desktop\Agent-study。不跨设备自动同步。
+- 工作区路径随电脑不同：另一台电脑为 F:\WorkBuddy\AI大模型学习 / Agent-study；本机（2026-08-13 起）为 C:\Users\YueLi\Desktop\AI大模型学习。不跨设备自动同步，靠网盘/Git 手动同步整个工作区文件夹。
 - 本地记忆：用户级 C:\Users\YueLi\.workbuddy\；项目级 .workbuddy\memory\。
-- 多设备方案：用网盘/Git 同步整个工作区文件夹，新电脑打开同一文件夹即可继续。
+- MySQL 环境：Docker Desktop + 容器 ai-mysql（mysql:8.4，端口 3306 映射），本机学习用。
