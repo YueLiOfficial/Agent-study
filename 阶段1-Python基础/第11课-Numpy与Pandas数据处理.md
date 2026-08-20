@@ -153,14 +153,77 @@ repairs = pd.DataFrame({"device_id": [1, 2], "reason": ["轴承磨损", "过载"
 merged = pd.merge(df_db, repairs, on="device_id", how="left")
 ```
 
-## 六、练习任务（打卡标准）
+> 💡 本机 Docker MySQL 的宿主机端口是 **13306**（不是默认 3306），上面 `port=` 要填 13306，`pd.read_sql` 连引擎同理。
+
+## 六、数据可视化（Matplotlib / Seaborn）【v2.1 补充】
+
+**为什么可视化**：C++ 里用 `qDebug()` 打印变量，看完就忘；可视化是把"瞬时打印"变成"快照照片"——一眼看到**趋势 / 对比 / 分布 / 离群点**。RAG 评估报告、数据分析看板全靠它。
+
+**第 0 步 · 中文字体（必踩的坑）**：Matplotlib 默认字体不含中文字符，标题/标签含中文会显示成方块 `□□□`。代码最前面加两行：
+
+```python
+import matplotlib.pyplot as plt
+plt.rcParams["font.sans-serif"] = ["Microsoft YaHei", "SimHei"]
+plt.rcParams["axes.unicode_minus"] = False   # 否则负号也变方块
+```
+
+> ⚠️ `sns.set_theme()` 会**重置**字体配置——用 Seaborn 时顺序必须是：先 `set_theme`，再设中文字体。
+
+**四种基础图**（`subplots(2, 2)` 一张画布排 2×2）：
+
+```python
+fig, axes = plt.subplots(2, 2, figsize=(11, 8))
+
+axes[0, 0].plot(times, temps, marker="o")   # 折线：看趋势（C++ 画 t-x 曲线）
+axes[0, 1].bar(devices, counts)             # 柱状：离散类别对比
+axes[1, 0].hist(temps, bins=5)              # 直方：数据分布
+axes[1, 1].scatter(times, temps, s=80)      # 散点：离群点/相关性
+
+plt.tight_layout()
+plt.savefig("图表.png", dpi=110)   # 脚本方式必须 savefig；交互环境用 plt.show()
+```
+
+> 🔥 **常见错**：画完忘了 `plt.show()` / `plt.savefig()`——图不会显示也不会保存！脚本方式跑更惨，一张都看不到。
+
+**Pandas 一行流**（DataFrame/Series 自带 `.plot.*`，连 pyplot 都不用）：
+
+```python
+df.groupby('device_id')['temp'].mean().plot.bar()   # 每台设备平均温度柱状图
+df.plot.line(x="id", y="temp")    # 折线   df.plot.hist(bins=5)   # 直方
+df.plot.scatter(x="id", y="temp") # 散点   df.plot.box()          # 箱线
+```
+
+> 💡 groupby 结果的 **index 就是 x 轴**，直接 `.plot.bar()`，不用传 `x=` 参数（传了也会被忽略）。
+
+**Seaborn 统计图**（一行配出专业风格，重点 `boxplot`）：
+
+```python
+import seaborn as sns
+sns.boxplot(data=df_db, x="device_id", y="temp")   # 箱线：中位数/四分位/离群点
+# 其他：sns.histplot / sns.heatmap / sns.pairplot / sns.violinplot
+```
+
+**选图速查**：
+
+| 想表达什么 | 用什么图 |
+|---|---|
+| 趋势变化 | 折线 `plot` |
+| 类别对比 | 柱状 `bar` |
+| 数值分布 | 直方 `hist` / 箱线 `box` |
+| 找离群点/相关性 | 散点 `scatter` |
+| 中位数/四分位/离群 | 箱线 `boxplot` |
+
+## 七、练习任务（打卡标准）
 
 1. **Numpy 统计**：造一个温度数组 `np.array([85.5, 92.3, 88.2, 95.7, 79.0])`，打印均值/最大/最小/标准差，再筛出 `> 85` 的
 2. **DataFrame 筛选**：用本课的设备示例 df，找出"温度 > 80 且 状态=运行"的设备，打印 code 和 temp
 3. **分组聚合**：按 `type` 分组，求每种设备的平均温度和最大温度（提示：`groupby(...).agg({"temp": ["mean", "max"]})`）
 4. **综合（连接上一课）**：用 `pd.read_sql` 把 `factory_db` 里 `alarms` 表读成 DataFrame，打印 `describe()` 结果 + 按 device_id 分组的平均温度
+5. **可视化基础**：读 `alarms` 表，用 `subplots(2, 2)` 画四宫格（折线/柱状/直方/散点），数据用 `df_db['id']` 和 `df_db['temp']`，记得 `plt.show()`/`savefig` + 中文字体两行
+6. **可视化一行流**：`df_db.groupby('device_id')['temp'].mean().plot.bar()` 画每台设备平均温度柱状图
+7. **可视化 Seaborn**：`sns.boxplot(data=df_db, x='device_id', y='temp')` 对比 E-101（id=1）和 E-102（id=2）的温度分布差异
 
-## 七、常见坑
+## 八、常见坑
 
 - ❌ `pip install` 后 import 报错 → 确认装到了**你运行 Python 的那个环境**（如 venv 装错位置）
 - ❌ `df["temp"] > 80` 直接 `if` 判断 → 报错（结果是数组），必须放在 `df[...]` 里当筛选条件
@@ -168,9 +231,10 @@ merged = pd.merge(df_db, repairs, on="device_id", how="left")
 - ⚠️ 中文列名/数据乱码 → `pd.read_csv(..., encoding="utf-8")`；读 MySQL 连接要 `charset="utf8mb4"`
 - ⚠️ `df["temp"]` 返回 Series，`df[["temp"]]` 返回 DataFrame——列名列表要双括号
 
-## 八、第 9 周收官 + 预告
+## 九、模块 2 收官 + 预告
 
-🎉 **模块 2（语言进阶）全部完成**：Python 核心语法 + OOP + 高阶特性 + MySQL + PyMySQL + Numpy/Pandas——写 RAG、Agent 的语法和数据地基已经打牢。
+🎉 **模块 2（语言进阶）全部完成**：Python 核心语法 + OOP + 高阶特性 + MySQL（含开窗函数）+ PyMySQL + Numpy/Pandas + 数据可视化——写 RAG、Agent 的语法和数据地基已经打牢。
 
-- **模块 3 智能体平台**（第 10–12 周）：Prompt 工程系统学习 → Coze 搭建智能体 → Dify 私有化部署（Ollama + 知识库 RAG + Agent）——你的第一个"真智能体"项目
+- ▶️ **模块 2 补充 · 工程基础**（第 10 周，v2.1 新增）：Linux 常用命令 + Shell 脚本 + Docker 容器——部署地基，为里程碑 2（RAG 项目 Docker 部署）铺路
+- **模块 3 智能体平台**（第 11–13 周）：Prompt 工程系统学习 → Coze 搭建智能体 → Dify 私有化部署（Ollama + 知识库 RAG + Agent）——你的第一个"真智能体"项目
 - 如果好奇 RAG 长什么样，模块 5 见真章；模块 3 的 Dify 会提前让你摸到 RAG 的门

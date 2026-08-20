@@ -169,7 +169,69 @@ WHERE a.temp >= 90;
 
 **C++ 类比**：相当于两个 vector 按 ID 做 hash 连接——`device_id` 就是"指针"，JOIN 就是解引用取对方字段。
 
-## 七、练习任务（打卡标准）
+## 七、开窗函数（窗口函数）【v2.1 补充 · 高频考点】
+
+**和 GROUP BY 的本质区别**：
+- `GROUP BY`：多行**合并成一行**（组内细节全丢）
+- 窗口函数：**保留每一行**，在旁边附加"组内统计结果"
+
+```sql
+-- 对照：GROUP BY 把 5 行报警压成 2 行
+SELECT device_id, COUNT(*) FROM alarms GROUP BY device_id;
+
+-- 窗口函数：5 行原样保留，每行旁边多一列"该设备报警总数"
+SELECT id, device_id, temp,
+       COUNT(*) OVER (PARTITION BY device_id) AS 该设备报警总数
+FROM alarms;
+```
+
+**语法骨架**：
+```sql
+函数() OVER (
+    PARTITION BY 分组列      -- 按什么分组（省略 = 全表一组）
+    ORDER BY 排序列          -- 组内排序（可选，影响累计/排名）
+)
+```
+
+**三类窗口函数**：
+
+| 类别 | 函数 | 用途 | 示例 |
+|---|---|---|---|
+| 聚合类 | `COUNT/SUM/AVG/MAX/MIN` + `OVER` | 保留行 + 附加组统计 | `SUM(temp) OVER (PARTITION BY device_id)` |
+| 排名类 | `ROW_NUMBER` / `RANK` / `DENSE_RANK` | 组内排名 | 见下 |
+| 取值类 | `LAG` / `LEAD` | 取本行前/后一行 | `LAG(temp) OVER (...)` |
+
+**排名三兄弟的区别**（面试必问，构造并列数据看）：
+
+```sql
+SELECT temp,
+       ROW_NUMBER() OVER (ORDER BY temp DESC) AS rn,
+       RANK()       OVER (ORDER BY temp DESC) AS rk,
+       DENSE_RANK() OVER (ORDER BY temp DESC) AS drk
+FROM (SELECT 95.7 AS temp UNION ALL SELECT 92.3
+      UNION ALL SELECT 92.3 UNION ALL SELECT 91.0) t;
+-- temp   rn  rk  drk
+-- 95.7    1   1    1
+-- 92.3    2   2    2
+-- 92.3    3   2    2   ← 并列！RANK/DENSE_RANK 相同名次
+-- 91.0    4   4    3   ← RANK 跳号到 4，DENSE_RANK 不跳
+```
+
+> 一句话记忆：**RANK 并列跳号、DENSE_RANK 并列不跳号、ROW_NUMBER 不承认并列**。
+> ROW_NUMBER 常用于"每组取 Top-N"：子查询先编号，外层 `WHERE rn = 1`（或 <= N）。
+
+**LAG 的工业应用——设备异常预警**：`temp - LAG(temp)` 得到温度突变量，设阈值（≥3℃）即可报警：
+
+```sql
+SELECT * FROM (
+    SELECT *, temp - LAG(temp) OVER(PARTITION BY device_id ORDER BY happened) AS temp_diff
+    FROM alarms
+) t WHERE temp_diff >= 3;    -- 只保留突升 ≥3℃ 的报警
+```
+
+> ⚠️ 两个隐藏正确性保证：① `PARTITION BY device_id` 防跨组比较；② 每组第一条 `LAG` 为 NULL，`NULL >= 3` 结果为 NULL，被 WHERE 自动过滤——不会误报第一条。
+
+## 八、练习任务（打卡标准）
 
 在 MySQL 里完整跑一遍下面流程（截图或复制输出给我检查）：
 
@@ -177,8 +239,10 @@ WHERE a.temp >= 90;
 2. **增删改查**：插入 3 台设备 + 5 条报警；把 E-102 状态改为停机；删除你插入的第 3 台设备
 3. **聚合**：查每种设备类型下，所有设备的平均温度（提示：需要 JOIN 后 GROUP BY type）——结果应该能看出哪类设备最热
 4. **思考题**：为什么 `alarms` 表不直接存 `code`/`name`，而只存 `device_id`？用 50 字说清楚
+5. **开窗 Top-N**：查每台设备**温度最高的那次报警**完整信息（提示：`ROW_NUMBER() OVER (PARTITION BY device_id ORDER BY temp DESC)` 子查询 + 外层 `WHERE rn = 1`）
+6. **开窗预警**：用 `LAG` 找出**温度突升 ≥3℃** 的报警（设备异常预警雏形）
 
-## 八、常见坑
+## 九、常见坑
 
 - ❌ `UPDATE/DELETE` 忘写 `WHERE` → **全表修改/删除**（先 SELECT 验证）
 - ❌ SQL 语句末尾忘了分号 `;` → 命令不执行（交互模式卡住）
@@ -187,7 +251,9 @@ WHERE a.temp >= 90;
 - ⚠️ `NULL` 和空字符串 `''` 不一样：NULL 是"没有值"，`WHERE name IS NULL` 查 NULL，`= ''` 查空串
 - ⚠️ `COUNT(*)` 统计所有行；`COUNT(列名)` 会跳过该列为 NULL 的行
 
-## 九、预告
+## 十、预告（已全部完成 ✅）
 
-- 第 10 课：**PyMySQL**——用 Python 代码连 MySQL（参数化查询防注入），把设备管理系统真正变成"数据库版"
-- 第 11 课：**Numpy / Pandas**——Python 数据分析双雄，模块 5 RAG 的数据预处理主力
+- ✅ 第 10 课：**PyMySQL**——用 Python 代码连 MySQL（参数化查询防注入），设备管理系统"数据库版"（2026-08-15 完成）
+- ✅ 第 11 课：**Numpy / Pandas**——数据分析双雄 + 数据可视化（2026-08-18 完成）
+- ▶️ 模块 2 补充 · 工程基础（第 10 周）：**Linux/Shell + Docker**——部署地基，v2.1 新增（2026-08-18 计划升级）
+- 之后进入模块 3 智能体平台（Coze/Dify）
